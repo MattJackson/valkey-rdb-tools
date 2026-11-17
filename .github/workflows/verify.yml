@@ -1,0 +1,37 @@
+name: verify
+on:
+  push:
+    branches: [verify/strict-budget-zeroize]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {name: default, args: "-p rdb-parser"}
+          - {name: zeroize, args: "-p rdb-parser --features zeroize"}
+          - {name: no-default, args: "-p rdb-parser --no-default-features"}
+          - {name: workspace, args: "--workspace --exclude valkey-rdb-python"}
+          - {name: workspace-zeroize, args: "-p rdb-parser -p rdb-to-arrow -p cli --features rdb-parser/zeroize"}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: {components: "clippy, rustfmt"}
+      - run: cargo test ${{ matrix.args }}
+      - run: cargo clippy ${{ matrix.args }} --all-targets -- -D warnings
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: {components: rustfmt}
+      - run: cargo fmt --all -- --check
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.75
+      - run: cargo check -p rdb-parser
+      - run: cargo check -p rdb-parser --features zeroize
